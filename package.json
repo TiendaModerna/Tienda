@@ -1,0 +1,10 @@
+{
+    "name": "api-settings",
+    "version": "1.0.0",
+    "description": "API Settings Website",
+    "main": "index.html",
+    "scripts": {
+      "build": "npm run copy",
+      "copy": "cp -r . ../dist"
+    }
+  }
