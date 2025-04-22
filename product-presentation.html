@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>عرض المنتجات</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            position: relative;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+            z-index: 10;
+        }
+
+        .back-btn:hover {
+            background: #0056b3;
+        }
+
+        .presentation-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #ffffff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .image-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0; /* أو حسب الحاجة */
+}
+
+        .image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transition: all 0.5s ease-in-out;
+            position: absolute;
+        }
+
+        .image-container img.main {
+            z-index: 2;
+        }
+
+        .image-container img.next {
+            z-index: 1;
+            transform: translateX(100%);
+            opacity: 0.7;
+        }
+
+        .image-container img.prev {
+            z-index: 1;
+            transform: translateX(-100%);
+            opacity: 0.7;
+        }
+
+        .product-description {
+    position: fixed;           /* أو absolute إذا كان داخل image-container */
+    left: 50%;
+    bottom: 30px;              /* المسافة من الأسفل */
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 800px;
+    background: rgba(255, 255, 255, 0.6); /* شفافية أعلى */
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    font-size: 18px;
+    color: #333;
+    padding: 5px;
+    margin: 0;
+    z-index: 10;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 25%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .control-btn {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .stop-btn {
+            background: #dc3545;
+        }
+
+        .stop-btn:hover {
+            background: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <button class="back-btn" onclick="window.location.href='index.html'">رجوع</button>
+        <div class="image-container">
+            <img id="productImage" class="main" src="" alt="">
+            <img id="nextImage" class="next" src="" alt="">
+            <img id="prevImage" class="prev" src="" alt="">
+        </div>
+        <div class="product-description" id="productDescription"></div>
+        <div class="controls">
+            <button class="control-btn" onclick="startPresentation()">بدء العرض</button>
+            <button class="control-btn stop-btn" onclick="stopPresentation()">إيقاف العرض</button>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script>
+       const firebaseConfig = {
+  apiKey: "AIzaSyAl0Lx338V6y3AMrFYGxM12hovjCeB9Gp0",
+  authDomain: "tienda-moderna.firebaseapp.com",
+  databaseURL: "https://tienda-moderna-default-rtdb.firebaseio.com",
+  projectId: "tienda-moderna",
+  storageBucket: "tienda-moderna.firebasestorage.app",
+  messagingSenderId: "661790485684",
+  appId: "1:661790485684:web:606eb960fe64b969fb3be1",
+  measurementId: "G-8N4N2V31TR"
+};
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let products = [];
+        let currentIndex = 0;
+        let interval;
+        let isPlaying = false;
+
+        db.ref("Producto").orderByChild("id").limitToLast(100).on("value", (snapshot) => {
+            products = [];
+            snapshot.forEach(child => {
+                const producto = child.val();
+                if (producto.cantidad > 0 && producto.url) {
+                    products.push(producto);
+                }
+            });
+            if (products.length > 0) {
+                displayProduct(currentIndex);
+                updateNextPrevImages();
+            }
+        });
+
+        function updateNextPrevImages() {
+            const nextIndex = (currentIndex + 1) % products.length;
+            const prevIndex = (currentIndex - 1 + products.length) % products.length;
+            
+            document.getElementById('nextImage').src = products[nextIndex].url;
+            document.getElementById('prevImage').src = products[prevIndex].url;
+        }
+
+        function displayProduct(index) {
+            if (index < 0 || index >= products.length) return;
+            
+            const product = products[index];
+            document.getElementById('productImage').src = product.url;
+            document.getElementById('productDescription').innerHTML = `
+                <h2>${product.descrepcion}</h2>
+                <p>السعر: ${product.pventa} درهم</p>
+            `;
+            
+            updateNextPrevImages();
+        }
+
+        function startPresentation() {
+            if (isPlaying) return;
+            
+            isPlaying = true;
+            interval = setInterval(() => {
+                currentIndex = (currentIndex + 1) % products.length;
+                displayProduct(currentIndex);
+            }, 3000);
+        }
+
+        function stopPresentation() {
+            if (!isPlaying) return;
+            
+            isPlaying = false;
+            clearInterval(interval);
+        }
+
+        // Start presentation automatically
+        startPresentation();
+    </script>
+</body>
+</html>
